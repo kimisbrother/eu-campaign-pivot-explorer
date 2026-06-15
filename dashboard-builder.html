@@ -1,0 +1,902 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Dashboard Builder</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/PapaParse/5.4.1/papaparse.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.4/chart.umd.min.js"></script>
+<style>
+:root{
+  --bg:#F4F5F9; --panel:#FFFFFF; --accent:#4C6FFF; --text:#1E2230;
+  --border:rgba(30,34,48,.12); --muted:rgba(30,34,48,.45); --accent-soft:rgba(76,111,255,.10);
+}
+*{box-sizing:border-box;}
+body{margin:0;font-family:'Inter',sans-serif;background:var(--bg);color:var(--text);}
+.app{max-width:1340px;margin:0 auto;padding:20px 24px 90px;}
+
+/* header */
+.header{display:flex;align-items:center;gap:14px;padding:14px 0 18px;border-bottom:1px solid var(--border);margin-bottom:16px;flex-wrap:wrap;}
+.logo-box{width:54px;height:54px;border-radius:10px;border:1px dashed var(--border);display:flex;align-items:center;justify-content:center;overflow:hidden;cursor:pointer;flex-shrink:0;background:var(--panel);}
+.logo-box img{width:100%;height:100%;object-fit:contain;}
+.logo-box span{font-size:9px;color:var(--muted);text-align:center;letter-spacing:.05em;}
+.title-input{font-size:22px;font-weight:800;border:none;background:none;color:var(--text);flex:1;min-width:200px;padding:4px 6px;border-radius:6px;}
+.title-input:focus{outline:1px dashed var(--accent);}
+.header-actions{display:flex;gap:8px;align-items:center;flex-wrap:wrap;}
+.btn{font-size:12.5px;padding:8px 14px;border-radius:8px;border:1px solid var(--border);background:var(--panel);color:var(--text);cursor:pointer;font-family:inherit;}
+.btn.primary{background:var(--accent);color:#fff;border-color:var(--accent);}
+.btn:hover{border-color:var(--accent);}
+.file-btn{position:relative;overflow:hidden;}
+.file-btn input{position:absolute;inset:0;opacity:0;cursor:pointer;width:100%;}
+
+/* settings */
+.settings{background:var(--panel);border:1px solid var(--border);border-radius:10px;padding:16px;margin-bottom:16px;display:none;}
+.settings.open{display:block;}
+.settings h3{font-size:12px;text-transform:uppercase;letter-spacing:.12em;color:var(--muted);margin:18px 0 10px;}
+.settings h3:first-child{margin-top:0;}
+.settings-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(140px,1fr));gap:14px;}
+.settings-grid label{font-size:12px;color:var(--muted);display:block;margin-bottom:5px;}
+.settings-grid input[type=color]{width:100%;height:34px;border:1px solid var(--border);border-radius:6px;background:none;padding:2px;}
+.field-row{display:grid;grid-template-columns:1.2fr 1fr 1fr 0.7fr 0.9fr 24px;gap:6px;margin-bottom:6px;align-items:center;}
+.field-row select,.field-row input{font-size:12px;padding:6px 7px;border:1px solid var(--border);border-radius:5px;background:var(--panel);color:var(--text);width:100%;}
+.rm-x{cursor:pointer;color:var(--muted);text-align:center;font-size:14px;}
+.rm-x:hover{color:#E8546B;}
+.col-summary{font-size:12px;color:var(--muted);margin-bottom:10px;}
+.col-chip{display:inline-block;padding:2px 8px;border-radius:12px;background:var(--accent-soft);color:var(--accent);font-size:11px;margin:2px;}
+
+/* tabs */
+.tabbar{display:flex;gap:4px;align-items:center;margin-bottom:14px;flex-wrap:wrap;border-bottom:1px solid var(--border);}
+.tab{padding:10px 16px;border-radius:8px 8px 0 0;border:1px solid transparent;cursor:pointer;font-size:13px;color:var(--muted);display:flex;align-items:center;gap:8px;}
+.tab.active{color:var(--text);font-weight:700;border-color:var(--border);border-bottom-color:var(--panel);background:var(--panel);}
+.tab input{font-size:13px;border:none;background:none;width:90px;color:inherit;font-weight:inherit;font-family:inherit;}
+.tab .rm{color:var(--muted);font-size:13px;}
+.tab .rm:hover{color:#E8546B;}
+.tab-add{padding:10px 14px;color:var(--muted);cursor:pointer;font-size:14px;}
+.tab-add:hover{color:var(--accent);}
+
+/* slicers */
+.filterbar{display:flex;flex-wrap:wrap;gap:10px;margin-bottom:16px;}
+.slicer{background:var(--panel);border:1px solid var(--border);border-radius:10px;padding:10px 12px;min-width:170px;}
+.slicer-head{display:flex;justify-content:space-between;align-items:center;margin-bottom:6px;gap:6px;}
+.slicer-head select{font-size:12px;border:none;background:none;color:var(--text);font-weight:600;flex:1;font-family:inherit;}
+.slicer select[multiple]{width:100%;font-size:12px;border:1px solid var(--border);border-radius:5px;min-height:84px;}
+.slicer .daterange{display:flex;gap:6px;}
+.slicer .daterange input{font-size:12px;padding:5px;border:1px solid var(--border);border-radius:5px;width:100%;}
+.slicer-search{width:100%;font-size:11px;padding:4px 6px;border:1px solid var(--border);border-radius:5px;margin-bottom:4px;}
+.add-slicer{border:1px dashed var(--border);border-radius:10px;display:flex;align-items:center;justify-content:center;color:var(--muted);cursor:pointer;font-size:12.5px;padding:10px 18px;}
+.add-slicer:hover{color:var(--accent);border-color:var(--accent);}
+
+/* kpi */
+.kpi-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(160px,1fr));gap:12px;margin-bottom:16px;}
+.kpi-card{background:var(--panel);border:1px solid var(--border);border-radius:10px;padding:14px 16px;position:relative;}
+.kpi-card .lbl{font-size:11px;color:var(--muted);text-transform:uppercase;letter-spacing:.07em;margin-bottom:6px;}
+.kpi-card .val{font-size:24px;font-weight:800;color:var(--accent);}
+.kpi-card .cfg{display:flex;gap:6px;margin-top:10px;}
+.kpi-card select{font-size:11px;flex:1;border:1px solid var(--border);border-radius:5px;padding:3px;font-family:inherit;}
+.kpi-card .rm{position:absolute;top:8px;right:10px;cursor:pointer;color:var(--muted);font-size:13px;}
+.kpi-card .rm:hover{color:#E8546B;}
+.add-tile{border:1px dashed var(--border);border-radius:10px;display:flex;align-items:center;justify-content:center;color:var(--muted);cursor:pointer;font-size:13px;min-height:78px;}
+.add-tile:hover{color:var(--accent);border-color:var(--accent);}
+
+/* charts */
+.chart-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(400px,1fr));gap:16px;margin-bottom:16px;}
+.chart-card{background:var(--panel);border:1px solid var(--border);border-radius:10px;padding:14px;}
+.chart-card .row1{display:flex;gap:8px;margin-bottom:10px;align-items:center;}
+.chart-card .title{font-weight:700;font-size:13px;border:none;background:none;flex:1;color:var(--text);padding:4px;border-radius:5px;font-family:inherit;}
+.chart-card select{font-size:12px;padding:5px 6px;border:1px solid var(--border);border-radius:5px;font-family:inherit;}
+.chart-card select[multiple]{min-height:60px;}
+.chart-card .ctrl{display:flex;flex-wrap:wrap;gap:6px;margin-bottom:10px;}
+.chart-card .rm{cursor:pointer;color:var(--muted);font-size:14px;}
+.chart-card .rm:hover{color:#E8546B;}
+.chart-card canvas{max-height:280px;}
+
+/* table */
+.table-wrap{background:var(--panel);border:1px solid var(--border);border-radius:10px;overflow:auto;}
+.table-ctrl{display:flex;gap:10px;padding:12px;border-bottom:1px solid var(--border);align-items:center;flex-wrap:wrap;}
+.table-ctrl select{font-size:12px;padding:5px 6px;border:1px solid var(--border);border-radius:5px;font-family:inherit;}
+.table-ctrl select[multiple]{min-height:56px;}
+table{width:100%;border-collapse:collapse;font-size:13px;}
+th,td{padding:9px 12px;border-bottom:1px solid var(--border);text-align:right;white-space:nowrap;}
+th:first-child,td:first-child{text-align:left;}
+th{background:var(--accent-soft);color:var(--text);font-size:11px;text-transform:uppercase;cursor:pointer;letter-spacing:.04em;}
+tfoot td{font-weight:700;background:var(--accent-soft);}
+tbody tr:hover{background:var(--accent-soft);}
+
+.edit-only{}
+body:not(.edit-mode) .edit-only{display:none !important;}
+.empty{padding:80px 20px;text-align:center;color:var(--muted);}
+.empty h2{color:var(--text);margin-bottom:8px;}
+.hint{font-size:12px;color:var(--muted);margin:0 0 14px;}
+.section-title{font-size:12px;text-transform:uppercase;letter-spacing:.12em;color:var(--muted);margin:18px 0 10px;}
+</style>
+</head>
+<body class="edit-mode">
+<div class="app">
+
+  <div class="header">
+    <div class="logo-box edit-only" id="logoBox">
+      <span>로고<br>업로드</span>
+      <img id="logoImg" style="display:none">
+      <input type="file" id="logoInput" accept="image/*" style="display:none">
+    </div>
+    <img id="logoImgView" style="display:none;height:46px;border-radius:6px;">
+    <input class="title-input" id="titleInput" value="캠페인 리포트">
+    <div class="header-actions">
+      <button class="btn edit-only" id="settingsBtn">⚙ 설정</button>
+      <label class="btn file-btn">샘플/CSV 업로드<input type="file" id="csvInput" accept=".csv"></label>
+      <button class="btn edit-only" id="exportConfigBtn">설정 내보내기</button>
+      <label class="btn file-btn edit-only">설정 가져오기<input type="file" id="importConfigInput" accept=".json"></label>
+      <button class="btn" id="editToggle">편집모드 끄기</button>
+    </div>
+  </div>
+
+  <div class="settings edit-only" id="settingsPanel">
+    <h3>색상 테마</h3>
+    <div class="settings-grid">
+      <div><label>배경색</label><input type="color" id="bgColor"></div>
+      <div><label>패널/카드 색</label><input type="color" id="panelColor"></div>
+      <div><label>강조색 (Brand Color)</label><input type="color" id="accentColor"></div>
+      <div><label>텍스트색</label><input type="color" id="textColor"></div>
+    </div>
+
+    <h3>데이터 컬럼</h3>
+    <div class="col-summary" id="colSummary">CSV를 업로드하면 컬럼이 표시됩니다.</div>
+
+    <h3>계산 지표 (CTR, CPC 등 — 자동 인식 + 직접 추가)</h3>
+    <div id="derivedHeader" style="display:none">
+      <div class="field-row" style="font-size:11px;color:var(--muted);font-weight:600;">
+        <div>이름</div><div>분자(합계)</div><div>분모(합계, 선택)</div><div>×</div><div>표시형식</div><div></div>
+      </div>
+    </div>
+    <div id="derivedList"></div>
+    <button class="btn edit-only" id="addDerived" style="margin-top:4px;">+ 계산 지표 추가</button>
+  </div>
+
+  <div class="tabbar edit-only" id="tabbar" style="display:none"></div>
+  <div id="tabContent"></div>
+
+</div>
+
+<script>
+/* ============================================================
+   STATE
+============================================================ */
+const STORAGE_KEY = 'wb_dashboard_config_v1';
+
+let rawData = [];
+
+let state = {
+  title: '캠페인 리포트',
+  logo: null,
+  colors: { bg:'#F4F5F9', panel:'#FFFFFF', accent:'#4C6FFF', text:'#1E2230' },
+  columns: [],           // [{name, type:'metric'|'dimension'|'date'}]
+  derivedFields: [],     // [{id,label,num,den,mult,format}]
+  tabs: [ defaultTab('탭 1') ],
+  activeTab: null,
+};
+state.activeTab = state.tabs[0].id;
+
+function defaultTab(name){
+  return { id: newId(), name, filters: [], kpis: [], charts: [], table: { dim:null, metrics:[] } };
+}
+function newId(){ return 'id' + Math.random().toString(36).slice(2,9); }
+
+/* ============================================================
+   SAMPLE CSV (BD2 EU 캠페인 — 데모용)
+============================================================ */
+const SAMPLE_CSV = `보고 시작,보고 종료,광고 이름,캠페인 이름,광고 세트 이름,지출 금액 (KRW),노출,클릭(전체),링크 클릭,CTR(링크 클릭률),CPC(링크 클릭당 비용) (KRW),CPM(1000회 노출당 비용) (KRW),ThruPlay
+2026-06-14,2026-06-14,20260601_Meta_Traffic4_SE_MMD_@Addy_RF02N0P,SE_MMD_LM_Traffic4,Manual_Video_Influencer_Interest,15670,1132,41,37,3.27,423.51,13842.76,57
+2026-06-14,2026-06-14,20260608_Meta_Traffic4_CZ_MMD_@ErikaHa_CZ_RF02OoD,CZ_MMD_LM_Traffic4,Manual_Video_Influencer_Interest,11969,2516,66,51,2.03,234.69,4757.15,383
+2026-06-14,2026-06-14,20260610_Meta_Traffic4_SE_MMD_@LadaSE_RF02Qi1,SE_MMD_LM_Traffic4,Manual_Video_Influencer_Interest,221576,20777,670,636,3.06,348.39,10664.48,1214
+2026-06-14,2026-06-14,20260610_Meta_Traffic5_PL_MMD_@LadaPL_RF02Qhz,PL_MMD_LM_Traffic5,Manual_Video_Influencer_Interest,660950,167783,6196,5170,3.08,127.84,3939.31,17616
+2026-06-13,2026-06-13,20260601_Meta_Traffic4_SE_MMD_@Addy_RF02N0P,SE_MMD_LM_Traffic4,Manual_Video_Influencer_Interest,60883,4850,221,193,3.98,315.46,12553.20,132
+2026-06-13,2026-06-13,20260608_Meta_Traffic4_CZ_MMD_@ErikaHa_CZ_RF02OoD,CZ_MMD_LM_Traffic4,Manual_Video_Influencer_Interest,58148,13576,364,303,2.23,191.91,4283.15,2280
+2026-06-13,2026-06-13,20260610_Meta_Traffic5_PL_MMD_@LadaPL_RF02Qhz,PL_MMD_LM_Traffic5,Manual_Video_Influencer_Interest,724166,184609,5779,4474,2.42,161.86,3922.70,25794
+2026-06-12,2026-06-12,20260601_Meta_Traffic4_SE_MMD_@RegSE_RF02N0D,SE_MMD_LM_Traffic4,Manual_Video_Influencer_Interest,23522,2119,42,32,1.51,735.06,11100.52,202
+2026-06-12,2026-06-12,20260530_Meta_Traffic1_UK_MMD_@Zuzia_RF02NpP,UK_MMD_AA_Traffic1,Manual_Video_Influencer_Interest,377929,33145,3097,2023,6.10,186.82,11402.29,789
+2026-06-11,2026-06-11,20260601_Meta_Traffic4_SE_MMD_@ErikaHa_SE_RF02N0J,SE_MMD_LM_Traffic4,Manual_Video_Influencer_Interest,130562,11396,399,297,2.61,439.60,11456.83,712
+2026-06-11,2026-06-11,20260530_Meta_Traffic1_UK_MMD_@Zuzia_RF02NpP,UK_MMD_AA_Traffic1,Manual_Video_Influencer_Interest,629557,86098,4791,4300,4.99,146.41,7312.10,2856
+2026-06-10,2026-06-10,20260608_Meta_Traffic4_CZ_MMD_@SophieCZ_RF02Oo3,CZ_MMD_LM_Traffic4,Manual_Video_Influencer_Interest,42532,8389,300,246,2.93,172.89,5069.97,449
+2026-06-10,2026-06-10,20260530_Meta_Traffic1_UK_MMD_@Zuzia_RF02NpP,UK_MMD_AA_Traffic1,Manual_Video_Influencer_Interest,636745,95973,4975,4553,4.74,139.85,6634.63,3079
+2026-06-09,2026-06-09,20260608_Meta_Traffic4_CZ_MMD_@MichaelaCZ_RF02Oo9,CZ_MMD_LM_Traffic4,Manual_Video_Influencer_Interest,55157,18932,289,266,1.41,207.36,2913.43,6655
+2026-06-09,2026-06-09,20260530_Meta_Traffic1_UK_MMD_@Zuzia_RF02NpP,UK_MMD_AA_Traffic1,Manual_Video_Influencer_Interest,600358,98770,5273,4834,4.89,124.19,6078.34,3193
+2026-06-08,2026-06-08,20260608_Meta_Traffic4_CZ_MMD_@Addy_RF02OoF,CZ_MMD_LM_Traffic4,Manual_Video_Influencer_Interest,95055,19398,640,549,2.83,173.14,4900.25,1872
+2026-06-08,2026-06-08,20260530_Meta_Traffic1_UK_MMD_@Zuzia_RF02NpP,UK_MMD_AA_Traffic1,Manual_Video_Influencer_Interest,607192,96157,5308,5018,5.22,121.00,6314.59,3333
+2026-06-08,2026-06-08,20260602_Meta_PartnershipAds1_PL_MMD_@detelina89_RF02OjV,PL_MMD_Partnership_Ads,Partnership_Ads1,45560,14096,556,263,1.87,173.23,3232.12,695
+2026-06-08,2026-06-08,20260601_Meta_Traffic4_SE_MMD_@Sophie_SE_RF02N09,SE_MMD_LM_Traffic4,Manual_Video_Influencer_Interest,390219,35631,1402,1155,3.24,337.85,10951.67,1400
+`;
+
+/* ============================================================
+   PERSISTENCE
+============================================================ */
+function save(){
+  try{ localStorage.setItem(STORAGE_KEY, JSON.stringify(state)); }catch(e){ /* ignore quota errors */ }
+}
+function load(){
+  try{
+    const saved = localStorage.getItem(STORAGE_KEY);
+    if(saved){
+      const parsed = JSON.parse(saved);
+      state = Object.assign(state, parsed);
+      if(!state.tabs || !state.tabs.length) state.tabs = [defaultTab('탭 1')];
+      if(!state.activeTab) state.activeTab = state.tabs[0].id;
+    }
+  }catch(e){ /* ignore */ }
+}
+
+/* ============================================================
+   CSV PARSING / COLUMN INFERENCE
+============================================================ */
+function inferColumns(data){
+  if(!data.length) return [];
+  const names = Object.keys(data[0]);
+  return names.map(name => {
+    let numCount=0, dateCount=0, total=0;
+    for(const r of data){
+      const v = r[name];
+      if(v === '' || v == null) continue;
+      total++;
+      if(/^\d{4}-\d{2}-\d{2}/.test(String(v))) dateCount++;
+      else if(!isNaN(parseFloat(v)) && isFinite(v)) numCount++;
+    }
+    let type = 'dimension';
+    if(total && dateCount/total > 0.8) type = 'date';
+    else if(total && numCount/total > 0.8) type = 'metric';
+    return { name, type };
+  });
+}
+
+function autoDetectDerived(columns){
+  const metrics = columns.filter(c=>c.type==='metric');
+  const find = (...kws) => metrics.find(c => kws.some(k => c.name.includes(k)));
+  const spend = find('지출','비용','Spend','Cost','금액');
+  const impressions = find('노출','Impression');
+  const linkClicks = find('링크 클릭','Link Click','링크클릭');
+  const out = [];
+  if(linkClicks && impressions) out.push({id:'ctr', label:'CTR (%)', num:linkClicks.name, den:impressions.name, mult:100, format:'pct'});
+  if(spend && linkClicks) out.push({id:'cpc', label:'CPC', num:spend.name, den:linkClicks.name, mult:1, format:'currency'});
+  if(spend && impressions) out.push({id:'cpm', label:'CPM', num:spend.name, den:impressions.name, mult:1000, format:'currency'});
+  return out;
+}
+
+function loadCsvText(text, label){
+  const res = Papa.parse(text.trim(), { header:true, skipEmptyLines:true });
+  rawData = res.data;
+  state.columns = inferColumns(rawData);
+  if(state.derivedFields.length === 0) state.derivedFields = autoDetectDerived(state.columns);
+  // sensible defaults for first tab if empty
+  const tab = state.tabs.find(t=>t.id===state.activeTab) || state.tabs[0];
+  const fields = allFields();
+  const dims = state.columns.filter(c=>c.type!=='metric');
+  if(fields.length && tab.kpis.length===0){
+    tab.kpis = fields.slice(0,4).map(f=>({id:newId(), field:f.id, agg:'sum'}));
+  }
+  if(dims.length && fields.length && tab.charts.length===0){
+    tab.charts.push({id:newId(), title:'기간별 추이', type:'line', dim: (state.columns.find(c=>c.type==='date')||dims[0]).name, metrics:[fields[0].id]});
+    tab.charts.push({id:newId(), title:'그룹별 비교', type:'bar', dim: dims[0].name, metrics:[fields[0].id]});
+  }
+  if(dims.length && fields.length && !tab.table.dim){
+    tab.table.dim = dims[0].name;
+    tab.table.metrics = fields.slice(0,4).map(f=>f.id);
+  }
+  save();
+  renderAll();
+}
+
+/* ============================================================
+   FIELD / VALUE HELPERS
+============================================================ */
+function allFields(){
+  const metricCols = state.columns.filter(c=>c.type==='metric').map(c=>({id:c.name, label:c.name, kind:'raw'}));
+  const derived = state.derivedFields.map(d=>({id:d.id, label:d.label, kind:'derived'}));
+  return [...metricCols, ...derived];
+}
+function fieldLabel(fieldId){
+  const f = allFields().find(f=>f.id===fieldId);
+  return f ? f.label : fieldId;
+}
+function getFieldValue(rows, fieldId, agg){
+  const df = state.derivedFields.find(d=>d.id===fieldId);
+  if(df){
+    let num=0, den=0;
+    for(const r of rows){
+      const nv = parseFloat(r[df.num]); if(!isNaN(nv)) num += nv;
+      if(df.den){ const dv = parseFloat(r[df.den]); if(!isNaN(dv)) den += dv; }
+    }
+    const denom = df.den ? den : 1;
+    return denom ? (num/denom)*df.mult : 0;
+  }
+  const vals = rows.map(r=>parseFloat(r[fieldId])).filter(v=>!isNaN(v));
+  if(agg==='avg') return vals.length ? vals.reduce((a,b)=>a+b,0)/vals.length : 0;
+  if(agg==='count') return vals.length;
+  return vals.reduce((a,b)=>a+b,0);
+}
+function formatField(fieldId, value){
+  const df = state.derivedFields.find(d=>d.id===fieldId);
+  const fmt = df ? df.format : 'number';
+  if(fmt==='pct') return value.toFixed(2)+'%';
+  if(fmt==='currency') return '₩'+Math.round(value).toLocaleString('ko-KR');
+  return Math.round(value).toLocaleString('ko-KR');
+}
+
+/* ============================================================
+   FILTERS (SLICERS)
+============================================================ */
+function applyFilters(rows, filters){
+  return rows.filter(r=>{
+    for(const f of filters){
+      if(!f.column) continue;
+      const colType = (state.columns.find(c=>c.name===f.column)||{}).type;
+      if(colType==='date'){
+        if(f.from && r[f.column] < f.from) return false;
+        if(f.to && r[f.column] > f.to) return false;
+      } else {
+        if(f.values && f.values.length && !f.values.includes(r[f.column])) return false;
+      }
+    }
+    return true;
+  });
+}
+function uniqueValues(col){
+  const set = new Set();
+  for(const r of rawData) if(r[col] !== '' && r[col] != null) set.add(r[col]);
+  return Array.from(set).sort();
+}
+
+/* ============================================================
+   COLOR HELPERS
+============================================================ */
+function hexToRgb(hex){
+  const v = hex.replace('#','');
+  return [parseInt(v.substr(0,2),16), parseInt(v.substr(2,2),16), parseInt(v.substr(4,2),16)];
+}
+function rgba(hex, a){ const [r,g,b]=hexToRgb(hex); return `rgba(${r},${g},${b},${a})`; }
+function rgbToHsl(r,g,b){
+  r/=255; g/=255; b/=255;
+  const max=Math.max(r,g,b), min=Math.min(r,g,b);
+  let h,s,l=(max+min)/2;
+  if(max===min){ h=s=0; } else {
+    const d=max-min;
+    s = l>0.5 ? d/(2-max-min) : d/(max+min);
+    switch(max){
+      case r: h=(g-b)/d+(g<b?6:0); break;
+      case g: h=(b-r)/d+2; break;
+      case b: h=(r-g)/d+4; break;
+    }
+    h/=6;
+  }
+  return [h*360, s*100, l*100];
+}
+function hslToHex(h,s,l){
+  s/=100; l/=100;
+  const k = n => (n + h/30) % 12;
+  const a = s * Math.min(l, 1-l);
+  const f = n => l - a * Math.max(-1, Math.min(k(n)-3, Math.min(9-k(n), 1)));
+  const toHex = x => Math.round(255*x).toString(16).padStart(2,'0');
+  return '#' + toHex(f(0)) + toHex(f(8)) + toHex(f(4));
+}
+function palette(n){
+  const [r,g,b] = hexToRgb(state.colors.accent);
+  const [h,s,l] = rgbToHsl(r,g,b);
+  const out = [];
+  for(let i=0;i<n;i++) out.push(hslToHex((h + i*48) % 360, Math.max(s,40), Math.min(Math.max(l,40),60)));
+  return out;
+}
+
+/* ============================================================
+   RENDER: THEME / HEADER / SETTINGS
+============================================================ */
+function applyTheme(){
+  const r = document.documentElement.style;
+  r.setProperty('--bg', state.colors.bg);
+  r.setProperty('--panel', state.colors.panel);
+  r.setProperty('--accent', state.colors.accent);
+  r.setProperty('--text', state.colors.text);
+  r.setProperty('--border', rgba(state.colors.text, 0.12));
+  r.setProperty('--muted', rgba(state.colors.text, 0.45));
+  r.setProperty('--accent-soft', rgba(state.colors.accent, 0.10));
+}
+
+function renderHeader(){
+  document.getElementById('titleInput').value = state.title;
+  document.getElementById('bgColor').value = state.colors.bg;
+  document.getElementById('panelColor').value = state.colors.panel;
+  document.getElementById('accentColor').value = state.colors.accent;
+  document.getElementById('textColor').value = state.colors.text;
+  if(state.logo){
+    document.getElementById('logoImg').src = state.logo;
+    document.getElementById('logoImg').style.display = 'block';
+    document.getElementById('logoImgView').src = state.logo;
+    document.getElementById('logoImgView').style.display = 'block';
+  } else {
+    document.getElementById('logoImg').style.display = 'none';
+    document.getElementById('logoImgView').style.display = 'none';
+  }
+}
+
+function renderColumnSummary(){
+  const el = document.getElementById('colSummary');
+  if(!state.columns.length){ el.textContent = 'CSV를 업로드하면 컬럼이 표시됩니다.'; return; }
+  el.innerHTML = state.columns.map(c => `<span class="col-chip">${c.name} · ${c.type==='metric'?'지표':c.type==='date'?'날짜':'항목'}</span>`).join(' ');
+}
+
+function renderDerivedFields(){
+  const metricCols = state.columns.filter(c=>c.type==='metric');
+  document.getElementById('derivedHeader').style.display = metricCols.length ? 'block' : 'none';
+  if(!metricCols.length){ document.getElementById('derivedList').innerHTML = ''; return; }
+  document.getElementById('derivedList').innerHTML = state.derivedFields.map(d => `
+    <div class="field-row" data-derived="${d.id}">
+      <input type="text" class="d-label" value="${d.label}">
+      <select class="d-num">${metricCols.map(c=>`<option value="${c.name}" ${c.name===d.num?'selected':''}>${c.name}</option>`).join('')}</select>
+      <select class="d-den"><option value="">(없음)</option>${metricCols.map(c=>`<option value="${c.name}" ${c.name===d.den?'selected':''}>${c.name}</option>`).join('')}</select>
+      <select class="d-mult">${[1,100,1000].map(m=>`<option value="${m}" ${m==d.mult?'selected':''}>×${m}</option>`).join('')}</select>
+      <select class="d-format">
+        <option value="number" ${d.format==='number'?'selected':''}>숫자</option>
+        <option value="pct" ${d.format==='pct'?'selected':''}>%</option>
+        <option value="currency" ${d.format==='currency'?'selected':''}>₩</option>
+      </select>
+      <div class="rm-x" data-rm-derived="${d.id}">×</div>
+    </div>`).join('');
+}
+
+/* ============================================================
+   RENDER: TABS
+============================================================ */
+function renderTabbar(){
+  const bar = document.getElementById('tabbar');
+  bar.style.display = state.tabs.length > 1 || true ? 'flex' : 'none';
+  bar.innerHTML = state.tabs.map(t => `
+    <div class="tab ${t.id===state.activeTab?'active':''}" data-tab="${t.id}">
+      <input value="${t.name}" data-tabname="${t.id}">
+      ${state.tabs.length>1?`<span class="rm" data-rmtab="${t.id}">×</span>`:''}
+    </div>`).join('') + `<div class="tab-add" id="addTab">+ 탭 추가</div>`;
+}
+
+/* ============================================================
+   RENDER: TAB CONTENT
+============================================================ */
+function renderTabContent(){
+  const container = document.getElementById('tabContent');
+  if(!rawData.length){
+    container.innerHTML = `
+      <div class="empty">
+        <h2>아직 데이터가 없어요</h2>
+        <p class="hint">우측 상단의 "샘플/CSV 업로드"로 시작해보세요. 같은 형식의 CSV라면 컬럼이 자동으로 인식됩니다.</p>
+      </div>`;
+    return;
+  }
+  const tab = state.tabs.find(t=>t.id===state.activeTab);
+  const fields = allFields();
+  const dims = state.columns.filter(c=>c.type!=='metric');
+  const filtered = applyFilters(rawData, tab.filters);
+
+  let html = '';
+
+  /* ---- Slicers ---- */
+  html += `<div class="filterbar">`;
+  tab.filters.forEach(f => {
+    const colType = (state.columns.find(c=>c.name===f.column)||{}).type;
+    html += `<div class="slicer" data-filter="${f.id}">
+      <div class="slicer-head">
+        <select class="f-col">${dims.map(c=>`<option value="${c.name}" ${c.name===f.column?'selected':''}>${c.name}</option>`).join('')}</select>
+        <span class="rm-x edit-only" data-rmfilter="${f.id}">×</span>
+      </div>`;
+    if(colType==='date'){
+      const vals = rawData.map(r=>r[f.column]).filter(Boolean).sort();
+      html += `<div class="daterange">
+        <input type="date" class="f-from" value="${f.from||''}" min="${vals[0]||''}" max="${vals[vals.length-1]||''}">
+        <input type="date" class="f-to" value="${f.to||''}" min="${vals[0]||''}" max="${vals[vals.length-1]||''}">
+      </div>`;
+    } else {
+      const options = uniqueValues(f.column);
+      html += `<input type="text" class="slicer-search" placeholder="검색…">
+      <select class="f-values" multiple size="6">${options.map(v=>`<option value="${v}" ${f.values&&f.values.includes(v)?'selected':''}>${v}</option>`).join('')}</select>`;
+    }
+    html += `</div>`;
+  });
+  html += `<div class="add-slicer edit-only" id="addFilter">+ 필터(슬라이서) 추가</div>`;
+  html += `</div>`;
+
+  /* ---- KPI cards ---- */
+  if(fields.length){
+    html += `<div class="kpi-grid">`;
+    tab.kpis.forEach(k => {
+      const val = getFieldValue(filtered, k.field, k.agg);
+      const isDerived = !!state.derivedFields.find(d=>d.id===k.field);
+      html += `<div class="kpi-card" data-kpi="${k.id}">
+        <div class="rm edit-only" data-rmkpi="${k.id}">×</div>
+        <div class="lbl">${fieldLabel(k.field)}</div>
+        <div class="val">${formatField(k.field, val)}</div>
+        <div class="cfg edit-only">
+          <select class="k-field">${fields.map(f=>`<option value="${f.id}" ${f.id===k.field?'selected':''}>${f.label}</option>`).join('')}</select>
+          ${isDerived?'':`<select class="k-agg"><option value="sum" ${k.agg==='sum'?'selected':''}>합계</option><option value="avg" ${k.agg==='avg'?'selected':''}>평균</option><option value="count" ${k.agg==='count'?'selected':''}>개수</option></select>`}
+        </div>
+      </div>`;
+    });
+    html += `<div class="add-tile edit-only" id="addKpi">+ 카드 추가</div>`;
+    html += `</div>`;
+  }
+
+  /* ---- Charts ---- */
+  if(fields.length && dims.length){
+    html += `<div class="chart-grid">`;
+    tab.charts.forEach(c => {
+      html += `<div class="chart-card" data-chart="${c.id}">
+        <div class="row1">
+          <input class="title" value="${c.title}">
+          <span class="rm edit-only" data-rmchart="${c.id}">×</span>
+        </div>
+        <div class="ctrl edit-only">
+          <select class="c-type">
+            <option value="bar" ${c.type==='bar'?'selected':''}>막대</option>
+            <option value="line" ${c.type==='line'?'selected':''}>선</option>
+            <option value="pie" ${c.type==='pie'?'selected':''}>파이</option>
+          </select>
+          <select class="c-dim">${dims.map(d=>`<option value="${d.name}" ${d.name===c.dim?'selected':''}>${d.name}</option>`).join('')}</select>
+          <select class="c-metrics" multiple size="3">${fields.map(f=>`<option value="${f.id}" ${c.metrics.includes(f.id)?'selected':''}>${f.label}</option>`).join('')}</select>
+        </div>
+        <canvas></canvas>
+      </div>`;
+    });
+    html += `<div class="add-tile edit-only" id="addChart">+ 차트 추가</div>`;
+    html += `</div>`;
+  }
+
+  /* ---- Table ---- */
+  if(fields.length && dims.length){
+    html += `<div class="section-title">상세 표</div>`;
+    html += `<div class="table-wrap">
+      <div class="table-ctrl edit-only">
+        <span style="font-size:12px;color:var(--muted);">기준</span>
+        <select id="tblDim">${dims.map(d=>`<option value="${d.name}" ${d.name===tab.table.dim?'selected':''}>${d.name}</option>`).join('')}</select>
+        <span style="font-size:12px;color:var(--muted);">지표</span>
+        <select id="tblMetrics" multiple size="3">${fields.map(f=>`<option value="${f.id}" ${tab.table.metrics.includes(f.id)?'selected':''}>${f.label}</option>`).join('')}</select>
+      </div>
+      <table>
+        <thead><tr id="tblHead"></tr></thead>
+        <tbody id="tblBody"></tbody>
+        <tfoot><tr id="tblFoot"></tr></tfoot>
+      </table>
+    </div>`;
+  }
+
+  container.innerHTML = html;
+
+  // post-render: charts + table
+  if(fields.length && dims.length){
+    tab.charts.forEach(c => renderChart(c, filtered));
+    renderTable(tab, filtered, fields);
+  }
+}
+
+/* ---- chart rendering ---- */
+const chartInstances = {};
+function renderChart(c, rows){
+  const card = document.querySelector(`[data-chart="${c.id}"]`);
+  if(!card) return;
+  const canvas = card.querySelector('canvas');
+  const dimType = (state.columns.find(col=>col.name===c.dim)||{}).type;
+
+  const groups = new Map();
+  for(const r of rows){
+    const key = r[c.dim] || '미분류';
+    if(!groups.has(key)) groups.set(key, []);
+    groups.get(key).push(r);
+  }
+  let entries = Array.from(groups.entries());
+  const metrics = c.metrics.length ? c.metrics : [allFields()[0]?.id];
+
+  if(dimType==='date'){
+    entries.sort((a,b)=> a[0] < b[0] ? -1 : 1);
+  } else {
+    entries.sort((a,b)=> getFieldValue(b[1], metrics[0]) - getFieldValue(a[1], metrics[0]));
+  }
+  if(c.type==='pie') entries = entries.slice(0,8);
+  else entries = entries.slice(0,12);
+
+  const labels = entries.map(([k])=> String(k).length>22 ? String(k).slice(0,20)+'…' : String(k));
+  const colors = palette(Math.max(metrics.length, entries.length));
+
+  let datasets;
+  if(c.type==='pie'){
+    const m = metrics[0];
+    datasets = [{ data: entries.map(([,rws])=>getFieldValue(rws, m)), backgroundColor: colors }];
+  } else {
+    datasets = metrics.map((m,i)=>({
+      label: fieldLabel(m),
+      data: entries.map(([,rws])=>getFieldValue(rws, m)),
+      backgroundColor: c.type==='line' ? rgba(colors[i%colors.length],0.18) : colors[i%colors.length],
+      borderColor: colors[i%colors.length],
+      borderWidth: c.type==='line' ? 2 : 0,
+      borderRadius: c.type==='bar' ? 4 : 0,
+      tension: 0.35,
+      fill: c.type==='line',
+    }));
+  }
+
+  if(chartInstances[c.id]) chartInstances[c.id].destroy();
+  chartInstances[c.id] = new Chart(canvas, {
+    type: c.type==='pie' ? 'pie' : c.type,
+    data: { labels, datasets },
+    options: {
+      responsive: true,
+      plugins: { legend: { display: c.type==='pie' || metrics.length>1, labels:{ color: state.colors.text, font:{size:11} } } },
+      scales: c.type==='pie' ? {} : {
+        x: { ticks:{ color: state.colors.text, font:{size:10} }, grid:{ color: rgba(state.colors.text,0.06) } },
+        y: { ticks:{ color: state.colors.text, font:{size:10} }, grid:{ color: rgba(state.colors.text,0.06) } }
+      }
+    }
+  });
+}
+
+/* ---- table rendering ---- */
+let tableSort = { key:null, dir:'desc' };
+function renderTable(tab, rows, fields){
+  const dimCol = tab.table.dim;
+  const metrics = tab.table.metrics.length ? tab.table.metrics : [fields[0].id];
+  const groups = new Map();
+  for(const r of rows){
+    const key = r[dimCol] || '미분류';
+    if(!groups.has(key)) groups.set(key, []);
+    groups.get(key).push(r);
+  }
+  let entries = Array.from(groups.entries()).map(([key, grpRows])=>({
+    key, values: metrics.map(m=>getFieldValue(grpRows, m))
+  }));
+
+  if(!tableSort.key) tableSort = { key: metrics[0], dir:'desc' };
+  entries.sort((a,b)=>{
+    let av, bv;
+    if(tableSort.key==='__key'){ av=a.key; bv=b.key; }
+    else { const idx=metrics.indexOf(tableSort.key); av=a.values[idx]; bv=b.values[idx]; }
+    if(av<bv) return tableSort.dir==='asc' ? -1 : 1;
+    if(av>bv) return tableSort.dir==='asc' ? 1 : -1;
+    return 0;
+  });
+
+  document.getElementById('tblHead').innerHTML =
+    `<th data-sortkey="__key">${dimCol}</th>` +
+    metrics.map(m=>`<th data-sortkey="${m}">${fieldLabel(m)} ${tableSort.key===m?(tableSort.dir==='desc'?'▼':'▲'):''}</th>`).join('');
+
+  document.getElementById('tblBody').innerHTML = entries.map(e=>
+    `<tr><td>${e.key}</td>${e.values.map((v,i)=>`<td>${formatField(metrics[i], v)}</td>`).join('')}</tr>`
+  ).join('') || `<tr><td colspan="${metrics.length+1}" style="text-align:center;color:var(--muted);">데이터 없음</td></tr>`;
+
+  const totals = metrics.map(m=>getFieldValue(rows, m));
+  document.getElementById('tblFoot').innerHTML = `<td>합계</td>` + totals.map((v,i)=>`<td>${formatField(metrics[i], v)}</td>`).join('');
+}
+
+/* ============================================================
+   FULL RENDER
+============================================================ */
+function renderAll(){
+  applyTheme();
+  renderHeader();
+  renderColumnSummary();
+  renderDerivedFields();
+  renderTabbar();
+  renderTabContent();
+}
+
+/* ============================================================
+   EVENT BINDING
+============================================================ */
+function bind(){
+  // header
+  document.getElementById('titleInput').addEventListener('input', e=>{ state.title=e.target.value; save(); });
+  document.getElementById('logoBox').addEventListener('click', ()=>document.getElementById('logoInput').click());
+  document.getElementById('logoInput').addEventListener('change', e=>{
+    const f=e.target.files[0]; if(!f) return;
+    const reader=new FileReader();
+    reader.onload=ev=>{ state.logo=ev.target.result; save(); renderHeader(); };
+    reader.readAsDataURL(f);
+  });
+  document.getElementById('settingsBtn').addEventListener('click', ()=>document.getElementById('settingsPanel').classList.toggle('open'));
+  document.getElementById('editToggle').addEventListener('click', e=>{
+    document.body.classList.toggle('edit-mode');
+    e.target.textContent = document.body.classList.contains('edit-mode') ? '편집모드 끄기' : '편집모드 켜기';
+  });
+  ['bgColor','panelColor','accentColor','textColor'].forEach(id=>{
+    document.getElementById(id).addEventListener('input', e=>{
+      const map={bgColor:'bg',panelColor:'panel',accentColor:'accent',textColor:'text'};
+      state.colors[map[id]] = e.target.value;
+      save(); applyTheme();
+      renderTabContent(); // re-render charts with new palette
+    });
+  });
+
+  // csv upload
+  document.getElementById('csvInput').addEventListener('change', e=>{
+    const f=e.target.files[0]; if(!f) return;
+    const reader=new FileReader();
+    reader.onload=ev=>loadCsvText(ev.target.result, f.name);
+    reader.readAsText(f,'UTF-8');
+  });
+
+  // config export/import
+  document.getElementById('exportConfigBtn').addEventListener('click', ()=>{
+    const blob = new Blob([JSON.stringify(state,null,2)], {type:'application/json'});
+    const a = document.createElement('a');
+    a.href = URL.createObjectURL(blob);
+    a.download = (state.title || 'dashboard') + '-config.json';
+    a.click();
+  });
+  document.getElementById('importConfigInput').addEventListener('change', e=>{
+    const f=e.target.files[0]; if(!f) return;
+    const reader=new FileReader();
+    reader.onload=ev=>{
+      try{
+        const imported = JSON.parse(ev.target.result);
+        state = Object.assign(state, imported);
+        if(!state.activeTab && state.tabs.length) state.activeTab = state.tabs[0].id;
+        save(); renderAll();
+      }catch(err){ alert('설정 파일을 읽을 수 없습니다: '+err.message); }
+    };
+    reader.readAsText(f,'UTF-8');
+  });
+
+  // derived fields
+  document.getElementById('addDerived').addEventListener('click', ()=>{
+    const metricCols = state.columns.filter(c=>c.type==='metric');
+    if(!metricCols.length) return;
+    state.derivedFields.push({ id:newId(), label:'새 지표', num:metricCols[0].name, den:'', mult:1, format:'number' });
+    save(); renderDerivedFields(); renderTabContent();
+  });
+  document.getElementById('derivedList').addEventListener('input', e=>{
+    const row = e.target.closest('[data-derived]'); if(!row) return;
+    const d = state.derivedFields.find(x=>x.id===row.dataset.derived); if(!d) return;
+    if(e.target.classList.contains('d-label')) d.label = e.target.value;
+    if(e.target.classList.contains('d-num')) d.num = e.target.value;
+    if(e.target.classList.contains('d-den')) d.den = e.target.value;
+    if(e.target.classList.contains('d-mult')) d.mult = parseFloat(e.target.value);
+    if(e.target.classList.contains('d-format')) d.format = e.target.value;
+    save(); renderTabContent();
+  });
+  document.getElementById('derivedList').addEventListener('click', e=>{
+    const rm = e.target.closest('[data-rm-derived]'); if(!rm) return;
+    state.derivedFields = state.derivedFields.filter(d=>d.id!==rm.dataset.rmDerived);
+    save(); renderDerivedFields(); renderTabContent();
+  });
+
+  // tabbar (delegated)
+  document.getElementById('tabbar').addEventListener('click', e=>{
+    const addBtn = e.target.closest('#addTab');
+    if(addBtn){ const t=defaultTab('탭 '+(state.tabs.length+1)); state.tabs.push(t); state.activeTab=t.id; save(); renderAll(); return; }
+    const rm = e.target.closest('[data-rmtab]');
+    if(rm){
+      if(state.tabs.length<=1) return;
+      state.tabs = state.tabs.filter(t=>t.id!==rm.dataset.rmtab);
+      if(state.activeTab===rm.dataset.rmtab) state.activeTab = state.tabs[0].id;
+      save(); renderAll(); return;
+    }
+    const tabEl = e.target.closest('.tab[data-tab]');
+    if(tabEl && !e.target.matches('input')){ state.activeTab = tabEl.dataset.tab; renderAll(); }
+  });
+  document.getElementById('tabbar').addEventListener('input', e=>{
+    if(e.target.matches('[data-tabname]')){
+      const t = state.tabs.find(t=>t.id===e.target.dataset.tabname);
+      if(t){ t.name = e.target.value; save(); }
+    }
+  });
+
+  // tab content (delegated)
+  const content = document.getElementById('tabContent');
+  content.addEventListener('click', e=>handleContentClick(e));
+  content.addEventListener('change', e=>handleContentChange(e));
+  content.addEventListener('input', e=>handleContentInput(e));
+}
+
+function currentTab(){ return state.tabs.find(t=>t.id===state.activeTab); }
+
+function handleContentClick(e){
+  const tab = currentTab();
+
+  if(e.target.closest('#addFilter')){
+    const dims = state.columns.filter(c=>c.type!=='metric');
+    if(!dims.length) return;
+    tab.filters.push({ id:newId(), column: dims[0].name, values:[], from:'', to:'' });
+    save(); renderTabContent(); return;
+  }
+  const rmf = e.target.closest('[data-rmfilter]');
+  if(rmf){ tab.filters = tab.filters.filter(f=>f.id!==rmf.dataset.rmfilter); save(); renderTabContent(); return; }
+
+  if(e.target.closest('#addKpi')){
+    const fields = allFields(); if(!fields.length) return;
+    tab.kpis.push({ id:newId(), field: fields[0].id, agg:'sum' });
+    save(); renderTabContent(); return;
+  }
+  const rmk = e.target.closest('[data-rmkpi]');
+  if(rmk){ tab.kpis = tab.kpis.filter(k=>k.id!==rmk.dataset.rmkpi); save(); renderTabContent(); return; }
+
+  if(e.target.closest('#addChart')){
+    const fields = allFields(); const dims = state.columns.filter(c=>c.type!=='metric');
+    if(!fields.length || !dims.length) return;
+    tab.charts.push({ id:newId(), title:'새 차트', type:'bar', dim: dims[0].name, metrics:[fields[0].id] });
+    save(); renderTabContent(); return;
+  }
+  const rmc = e.target.closest('[data-rmchart]');
+  if(rmc){
+    if(chartInstances[rmc.dataset.rmchart]){ chartInstances[rmc.dataset.rmchart].destroy(); delete chartInstances[rmc.dataset.rmchart]; }
+    tab.charts = tab.charts.filter(c=>c.id!==rmc.dataset.rmchart); save(); renderTabContent(); return;
+  }
+
+  const th = e.target.closest('th[data-sortkey]');
+  if(th){
+    const key = th.dataset.sortkey;
+    if(tableSort.key===key) tableSort.dir = tableSort.dir==='desc'?'asc':'desc';
+    else tableSort = { key, dir:'desc' };
+    const filtered = applyFilters(rawData, tab.filters);
+    renderTable(tab, filtered, allFields());
+    return;
+  }
+}
+
+function handleContentChange(e){
+  const tab = currentTab();
+  const filtered = ()=>applyFilters(rawData, tab.filters);
+
+  // filter column / values / daterange
+  const filterEl = e.target.closest('[data-filter]');
+  if(filterEl){
+    const f = tab.filters.find(f=>f.id===filterEl.dataset.filter);
+    if(e.target.classList.contains('f-col')){ f.column=e.target.value; f.values=[]; f.from=''; f.to=''; save(); renderTabContent(); return; }
+    if(e.target.classList.contains('f-values')){
+      f.values = Array.from(e.target.selectedOptions).map(o=>o.value); save(); renderTabContent(); return;
+    }
+    if(e.target.classList.contains('f-from')){ f.from=e.target.value; save(); renderTabContent(); return; }
+    if(e.target.classList.contains('f-to')){ f.to=e.target.value; save(); renderTabContent(); return; }
+  }
+
+  // kpi field/agg
+  const kpiEl = e.target.closest('[data-kpi]');
+  if(kpiEl){
+    const k = tab.kpis.find(k=>k.id===kpiEl.dataset.kpi);
+    if(e.target.classList.contains('k-field')) k.field = e.target.value;
+    if(e.target.classList.contains('k-agg')) k.agg = e.target.value;
+    save(); renderTabContent(); return;
+  }
+
+  // chart type/dim/metrics
+  const chartEl = e.target.closest('[data-chart]');
+  if(chartEl){
+    const c = tab.charts.find(c=>c.id===chartEl.dataset.chart);
+    if(e.target.classList.contains('c-type')) c.type = e.target.value;
+    if(e.target.classList.contains('c-dim')) c.dim = e.target.value;
+    if(e.target.classList.contains('c-metrics')) c.metrics = Array.from(e.target.selectedOptions).map(o=>o.value);
+    save(); renderTabContent(); return;
+  }
+
+  // table controls
+  if(e.target.id==='tblDim'){ tab.table.dim = e.target.value; tableSort={key:null,dir:'desc'}; save(); renderTabContent(); return; }
+  if(e.target.id==='tblMetrics'){ tab.table.metrics = Array.from(e.target.selectedOptions).map(o=>o.value); tableSort={key:null,dir:'desc'}; save(); renderTabContent(); return; }
+}
+
+function handleContentInput(e){
+  const tab = currentTab();
+  // slicer search filter (client-side filtering of option list)
+  if(e.target.classList.contains('slicer-search')){
+    const select = e.target.nextElementSibling;
+    const q = e.target.value.toLowerCase();
+    Array.from(select.options).forEach(o=>{ o.style.display = o.value.toLowerCase().includes(q) ? '' : 'none'; });
+    return;
+  }
+  // chart title rename
+  const chartEl = e.target.closest('[data-chart]');
+  if(chartEl && e.target.classList.contains('title')){
+    const c = tab.charts.find(c=>c.id===chartEl.dataset.chart);
+    c.title = e.target.value; save(); return;
+  }
+}
+
+/* ============================================================
+   INIT
+============================================================ */
+load();
+bind();
+renderAll();
+</script>
+</body>
+</html>
